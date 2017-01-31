@@ -182,9 +182,19 @@ class SyncRepos(object):
 
 		else:
 			selected_repos.extend(self.emerge_config.target_config.settings.repositories)
-		#print("_get_repos(), selected =", selected_repos)
-		if auto_sync_only:
-			return self._filter_auto(selected_repos)
+			if auto_sync_only:
+				selected_repos = self._filter_auto(selected_repos)
+			valid_repos = []
+			for repo in selected_repos:
+				if repo.sync_type is None:
+					writemsg_level("!!! %s\n" %
+						_("Missing sync-type for repo(s): %s") % repo.name,
+						level=logging.ERROR, noiselevel=-1)
+				else:
+					valid_repos.append(repo)
+			selected_repos = valid_repos[:]
+			#print("_get_repos(), selected =", selected_repos)
+
 		return selected_repos
 
 
@@ -205,7 +215,6 @@ class SyncRepos(object):
 					k = "--" + k.replace("_", "-")
 					self.emerge_config.opts[k] = v
 
-		selected_repos = [repo for repo in selected_repos if repo.sync_type is not None]
 		msgs = []
 		if not selected_repos:
 			msgs.append("Emaint sync, nothing to sync... returning")
