@@ -187,6 +187,17 @@ class SyncLocalTestCase(TestCase):
 			(homedir, lambda: repos_set_conf("git")),
 		)
 
+		emerge_sync_fail = (
+			(homedir, cmds['emerge'] + ("--sync", "unknown_repo")),
+			(homedir, lambda: repos_set_conf("rsync", auto_sync="no")),
+			(homedir, cmds['emerge'] + ("--sync", "test_repo")),
+			(homedir, lambda: repos_set_conf("rsync", auto_sync="yes")),
+			(homedir, cmds['emerge'] + ("--sync", "test_repo unknown_repo")),
+			(homedir, lambda: repos_set_conf("")),
+			(homedir, cmds['emerge'] + ("--sync",)),
+			(homedir, lambda: repos_set_conf("rsync")),
+		)
+
 		pythonpath =  os.environ.get("PYTHONPATH")
 		if pythonpath is not None and not pythonpath.strip():
 			pythonpath = None
@@ -262,6 +273,25 @@ class SyncLocalTestCase(TestCase):
 
 				self.assertEqual(os.EX_OK, proc.returncode,
 					"%s failed in %s" % (cmd, cwd,))
+
+			for cwd, cmd in emerge_sync_fail:
+				if hasattr(cmd, '__call__'):
+					cmd()
+					continue
+
+				abs_cwd = os.path.join(repo.location, cwd)
+				proc = subprocess.Popen(cmd,
+					cwd=abs_cwd, env=env, stdout=stdout)
+
+				if debug:
+					proc.wait()
+				else:
+					output = proc.stdout.readlines()
+					proc.wait()
+					proc.stdout.close()
+
+				self.assertEqual(1, proc.returncode,
+					"%s should have failed in %s" % (cmd, cwd,))
 
 
 		finally:
